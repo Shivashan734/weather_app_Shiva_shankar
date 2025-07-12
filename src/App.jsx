@@ -1,30 +1,91 @@
 import React, { useState, useEffect } from "react";
 import { fetchWeather } from "./api/fetchWeather";
+import { messaging, getToken, onMessage } from "./firebase";
 
 const App = () => {
   const [weatherData, setWeatherData] = useState(null);
   const [cityName, setCityName] = useState("");
   const [error, setError] = useState(null);
-  const [isCelsius, setIsCelsius] = useState(null);
+  const [isCelsius, setIsCelsius] = useState(true);
   const [loading, setLoading] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
 
+  // Geolocation + default city
   useEffect(() => {
     const savedSearches =
       JSON.parse(localStorage.getItem("recentSearches")) || [];
     setRecentSearches(savedSearches);
+
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          fetchData({ lat: latitude, lon: longitude });
+        },
+        (error) => {
+          console.error("Geolocation error:", error.message);
+          fetchData("Paris");
+        }
+      );
+    } else {
+      console.warn("Geolocation not supported");
+      fetchData("Paris");
+    }
   }, []);
 
-  const fetchData = async (city) => {
+  // FCM Setup with manual service worker registration
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/firebase-messaging-sw.js")
+        .then((registration) => {
+          console.log("✅ FCM SW registered:", registration);
+
+          Notification.requestPermission().then((permission) => {
+            if (permission === "granted") {
+              getToken(messaging, {
+                vapidKey:
+                  "BM5mWJfoEqNdEoETP0FMLOVWjSy026VHtBnrQKLmh6dWQL2-_lvTyfQmva-VQ5Lx3NuYIwHMz5P-KmjJvvVOBrk",
+                serviceWorkerRegistration: registration, // ✅ CRUCIAL!
+              })
+                .then((currentToken) => {
+                  if (currentToken) {
+                    console.log("🎯 FCM Token:", currentToken);
+                  } else {
+                    console.warn("⚠️ No FCM token received.");
+                  }
+                })
+                .catch((err) =>
+                  console.error("❌ Error getting FCM token:", err)
+                );
+            }
+          });
+
+          // Listen for foreground messages
+          onMessage(messaging, (payload) => {
+            console.log("🔔 Message received:", payload);
+            alert(`${payload.notification.title}\n${payload.notification.body}`);
+          });
+        })
+        .catch((err) => {
+          console.error("❌ Service worker registration failed:", err);
+        });
+    }
+  }, []);
+
+  const fetchData = async (input) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchWeather(city);
+      const data = await fetchWeather(input);
       setWeatherData(data);
       setCityName("");
-      updateRecentSearches(data.location.name);
+
+      if (typeof input === "string") {
+        updateRecentSearches(data.location.name);
+      }
     } catch (error) {
-      setError("City not found. Please try again.");
+      setError("City not found or location issue. Try again.");
       setWeatherData(null);
     } finally {
       setLoading(false);
@@ -51,7 +112,7 @@ const App = () => {
     fetchData(city);
   };
 
-  const toggleTemperatureUnit = (city) => {
+  const toggleTemperatureUnit = () => {
     setIsCelsius(!isCelsius);
   };
 
