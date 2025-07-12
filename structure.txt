@@ -1,4 +1,17 @@
 .
+├── build
+│   ├── asset-manifest.json
+│   ├── index.html
+│   ├── logo.png
+│   ├── manifest.json
+│   ├── offline.html
+│   ├── serviceWorker.js
+│   └── static
+│       └── js
+│           ├── main.5c9dd96a.js
+│           ├── main.5c9dd96a.js.LICENSE.txt
+│           └── main.5c9dd96a.js.map
+├── firebase-messaging-sw-custom.js.js
 ├── package-lock.json
 ├── package.json
 ├── public
@@ -12,7 +25,8 @@
 │   ├── api
 │   │   └── fetchWeather.js
 │   ├── App.jsx
+│   ├── firebase.js
 │   └── index.js
 └── structure.txt
 
-4 directories, 12 files
+7 directories, 23 files

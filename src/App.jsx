@@ -33,43 +33,54 @@ const App = () => {
     }
   }, []);
 
+  useEffect(() => {
+    const syncQueuedSearch = () => {
+      const queuedCity = localStorage.getItem("queuedCity");
+      if (queuedCity) {
+        fetchData(queuedCity);
+        localStorage.removeItem("queuedCity");
+        alert(`You're back online! Showing weather for "${queuedCity}"`);
+      }
+    };
+  
+    window.addEventListener("online", syncQueuedSearch);
+    return () => window.removeEventListener("online", syncQueuedSearch);
+  }, []);  
+
   // FCM Setup with manual service worker registration
   useEffect(() => {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/firebase-messaging-sw.js")
-        .then((registration) => {
-          console.log("✅ FCM SW registered:", registration);
+    navigator.serviceWorker
+      .register("/firebase-messaging-sw-custom.js") // ✅ updated
+      .then((registration) => {
+        console.log("✅ FCM SW registered:", registration);
 
-          Notification.requestPermission().then((permission) => {
-            if (permission === "granted") {
-              getToken(messaging, {
-                vapidKey:
-                  "BM5mWJfoEqNdEoETP0FMLOVWjSy026VHtBnrQKLmh6dWQL2-_lvTyfQmva-VQ5Lx3NuYIwHMz5P-KmjJvvVOBrk",
-                serviceWorkerRegistration: registration, // ✅ CRUCIAL!
+        Notification.requestPermission().then((permission) => {
+          if (permission === "granted") {
+            getToken(messaging, {
+              vapidKey: "BM5mWJfoEqNdEoETP0FMLOVWjSy026VHtBnrQKLmh6dWQL2-_lvTyfQmva-VQ5Lx3NuYIwHMz5P-KmjJvvVOBrk",
+              serviceWorkerRegistration: registration,
+            })
+              .then((currentToken) => {
+                if (currentToken) {
+                  console.log("🎯 FCM Token:", currentToken);
+                } else {
+                  console.warn("⚠️ No FCM token received.");
+                }
               })
-                .then((currentToken) => {
-                  if (currentToken) {
-                    console.log("🎯 FCM Token:", currentToken);
-                  } else {
-                    console.warn("⚠️ No FCM token received.");
-                  }
-                })
-                .catch((err) =>
-                  console.error("❌ Error getting FCM token:", err)
-                );
-            }
-          });
-
-          // Listen for foreground messages
-          onMessage(messaging, (payload) => {
-            console.log("🔔 Message received:", payload);
-            alert(`${payload.notification.title}\n${payload.notification.body}`);
-          });
-        })
-        .catch((err) => {
-          console.error("❌ Service worker registration failed:", err);
+              .catch((err) =>
+                console.error("❌ Error getting FCM token:", err)
+              );
+          }
         });
+
+        onMessage(messaging, (payload) => {
+          alert(`${payload.notification.title}\n${payload.notification.body}`);
+        });
+      })
+      .catch((err) => {
+        console.error("❌ Service worker registration failed:", err);
+      });
     }
   }, []);
 
@@ -94,9 +105,15 @@ const App = () => {
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
-      fetchData(cityName);
+      if (!navigator.onLine) {
+        // User is offline – store city
+        localStorage.setItem("queuedCity", cityName);
+        alert("You're offline! The city will be searched once you're back online.");
+      } else {
+        fetchData(cityName);
+      }
     }
-  };
+  };  
 
   const updateRecentSearches = (city) => {
     const updatedSearches = [
