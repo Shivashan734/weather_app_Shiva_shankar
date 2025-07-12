@@ -1,0 +1,18 @@
+.
+├── package-lock.json
+├── package.json
+├── public
+│   ├── index.html
+│   ├── logo.png
+│   ├── manifest.json
+│   ├── offline.html
+│   └── serviceWorker.js
+├── README.md
+├── src
+│   ├── api
+│   │   └── fetchWeather.js
+│   ├── App.jsx
+│   └── index.js
+└── structure.txt
+
+4 directories, 12 files
